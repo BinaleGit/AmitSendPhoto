@@ -1,6 +1,7 @@
 const express = require('express');
 const webpush = require('web-push');
 const bodyParser = require('body-parser');
+const mongoose = require('mongoose');
 const fs = require('fs'); // Added for file saving
 const app = express();
 
@@ -20,24 +21,33 @@ if (fs.existsSync('subs.json')) {
     girlfriendSubscription = JSON.parse(fs.readFileSync('subs.json'));
 }
 
-app.post('/subscribe', (req, res) => {
-  girlfriendSubscription = req.body;
-  // 2. Save to file so it doesn't disappear on restart
-  fs.writeFileSync('subs.json', JSON.stringify(girlfriendSubscription));
+
+// Connect to MongoDB using an Environment Variable
+mongoose.connect(process.env.MONGODB_URI)
+  .then(() => console.log("📦 Connected to MongoDB"))
+  .catch(err => console.error("❌ MongoDB Error:", err));
+
+// Create a simple 'Schema' for the subscription
+const SubscriptionSchema = new mongoose.Schema({
+  data: Object
+});
+const Subscription = mongoose.model('Subscription', SubscriptionSchema);
+
+// Update your /subscribe route
+app.post('/subscribe', async (req, res) => {
+  // Clear old ones so we only have one active subscription
+  await Subscription.deleteMany({}); 
+  const newSub = new Subscription({ data: req.body });
+  await newSub.save();
   res.status(201).json({});
 });
 
-app.post('/send-notification', (req, res) => {
-  if (!girlfriendSubscription) return res.status(400).send('No subscription found.');
+// Update your /send-notification route
+app.post('/send-notification', async (req, res) => {
+  const subRecord = await Subscription.findOne();
+  if (!subRecord) return res.status(400).send('No subscription found.');
 
-  const payload = JSON.stringify({ title: 'זמן לתמונה!📸', body: 'היי הגיע הזמן לשלוח תמונה שלך❤️' });
-
-  webpush.sendNotification(girlfriendSubscription, payload)
+  webpush.sendNotification(subRecord.data, payload)
     .then(() => res.sendStatus(200))
     .catch(err => res.status(500).send(err));
-});
-
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log(`✅ Server is running on http://localhost:${PORT}`);
 });

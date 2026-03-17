@@ -1,10 +1,12 @@
 const express = require('express');
+const cors = require('cors');
 const webpush = require('web-push');
 const bodyParser = require('body-parser');
 const fs = require('fs'); // Added for file saving
 const app = express();
 const mongoose = require('mongoose');
 
+app.use(cors()); // Allows GitHub Pages (or any other origin) to talk to this backend
 app.use(express.static('public'));
 app.use(bodyParser.json());
 
@@ -44,12 +46,23 @@ app.post('/subscribe', async (req, res) => {
 
 // Update your /send-notification route
 app.post('/send-notification', async (req, res) => {
-  const subRecord = await Subscription.findOne();
-  if (!subRecord) return res.status(400).send('No subscription found.');
+  try {
+    const subRecord = await Subscription.findOne();
+    if (!subRecord) return res.status(400).send('No subscription found.');
 
-  webpush.sendNotification(subRecord.data, payload)
-    .then(() => res.sendStatus(200))
-    .catch(err => res.status(500).send(err));
+    const subscription = subRecord.data;
+    if (!subscription || !subscription.endpoint || !subscription.keys) {
+      return res.status(400).send('Invalid subscription in DB (missing endpoint or keys). Re-subscribe from the app.');
+    }
+
+    const payload = JSON.stringify({ title: "Lover's Nudge 📸", body: 'Send a photo!' });
+
+    await webpush.sendNotification(subscription, payload);
+    res.sendStatus(200);
+  } catch (err) {
+    console.error('Send notification error:', err);
+    res.status(500).send(err.message || 'Failed to send notification');
+  }
 });
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

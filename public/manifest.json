@@ -1,13 +1,14 @@
 {
     "name": "Lover's Nudge",
     "short_name": "Lover's Nudge",
-    "start_url": "/",
+    "homepage": "https://BinaleGit.github.io/Amitphoto",
+    "start_url": ".",
     "display": "standalone",
     "background_color": "#fdf2f8",
     "theme_color": "#ec4899",
     "icons": [
       {
-        "src": "/icon.png",
+        "src": "icon.png",
         "sizes": "1024x1024",
         "type": "image/png",
         "purpose": "any maskable"

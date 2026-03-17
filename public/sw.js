@@ -1,9 +1,13 @@
-// public/sw.js
 self.addEventListener('push', e => {
     const data = e.data.json();
-    console.log('Push Received...');
     self.registration.showNotification(data.title, {
         body: data.body,
-        icon: 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png' // A cute camera icon
+        icon: '/icon.png',  // This points to your cute heart icon
+        badge: '/icon.png', // This is for the small status bar icon on Android
+        vibrate: [100, 50, 100],
+        data: {
+            dateOfArrival: Date.now(),
+            primaryKey: '1'
+        }
     });
 });

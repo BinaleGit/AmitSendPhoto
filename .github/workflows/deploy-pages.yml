@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: github-pages
-      url: https://BinaleGit.github.io/Amitphoto
+      url: https://binalegit.github.io/Amitphoto/
     steps:
       - name: Checkout
         uses: actions/checkout@v4

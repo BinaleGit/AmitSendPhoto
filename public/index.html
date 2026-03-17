@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="icon" href="/icon.png" type="image/png">
+    <link rel="apple-touch-icon" href="/icon.png">
+    <link rel="manifest" href="/manifest.json">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lover's Nudge</title>
+    <style>
+        body { font-family: Arial; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background-color: #fdf2f8; }
+        button { padding: 15px 30px; margin: 10px; font-size: 18px; border-radius: 25px; border: none; cursor: pointer; color: white; }
+        #subscribeBtn { background-color: #8b5cf6; }
+        #nudgeBtn { background-color: #ec4899; }
+    </style>
+</head>
+<body>
+
+    <h2>Lover's Nudge 📸</h2>
+    
+    <button id="subscribeBtn">1. Girlfriend: Enable Notifications</button>
+    
+    <button id="nudgeBtn">2. You: Ask for a Photo!</button>
+
+    <script>
+        const publicVapidKey = 'BIbLL4phpOOBFbYvxnVeEhuLngYTisFwD9ORYGXOANc-w1S4WofR_UTa54esmiYgLOGQcXxwfvPe1dii1j7tdvs';
+
+        // Check if service workers and push are supported
+        if ('serviceWorker' in navigator && 'PushManager' in window) {
+            
+            // 1. Subscribe her phone
+            document.getElementById('subscribeBtn').addEventListener('click', async () => {
+                const registration = await navigator.serviceWorker.register('/sw.js');
+                const subscription = await registration.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: publicVapidKey
+                });
+
+                await fetch('/subscribe', {
+                    method: 'POST',
+                    body: JSON.stringify(subscription),
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                alert('Notifications Enabled! You can close this now.');
+            });
+
+            // 2. You send the nudge
+            document.getElementById('nudgeBtn').addEventListener('click', async () => {
+                const res = await fetch('/send-notification', { method: 'POST' });
+                if (res.ok) {
+                    alert('Sent!');
+                } else {
+                    alert('Error: Make sure she subscribed first.');
+                }
+            });
+
+        } else {
+            alert('Push notifications are not supported in this browser.');
+        }
+    </script>
+</body>
+</html>

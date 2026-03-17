@@ -1,9 +1,9 @@
 const express = require('express');
 const webpush = require('web-push');
 const bodyParser = require('body-parser');
-const mongoose = require('mongoose');
 const fs = require('fs'); // Added for file saving
 const app = express();
+const mongoose = require('mongoose');
 
 app.use(express.static('public'));
 app.use(bodyParser.json());
@@ -50,4 +50,8 @@ app.post('/send-notification', async (req, res) => {
   webpush.sendNotification(subRecord.data, payload)
     .then(() => res.sendStatus(200))
     .catch(err => res.status(500).send(err));
+});
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+    console.log(`✅ Server is running on http://localhost:${PORT}`);
 });

@@ -234,14 +234,18 @@
             nudgeBtn.disabled = true;
             nudgeBtn.innerHTML = '<span class="spinner"></span> Sending...';
             try {
-                const res = await fetch(`${NTFY_SERVER}/${encodeURIComponent(t)}`, {
+                // Use ntfy's JSON publishing API so the title can contain emoji.
+                // (HTTP headers must be ISO-8859-1, but the JSON body is UTF-8.)
+                const res = await fetch(NTFY_SERVER, {
                     method: 'POST',
-                    headers: {
-                        'Title': "Lover's Nudge 📸",
-                        'Tags':  'camera_with_flash,heart',
-                        'Priority': 'high'
-                    },
-                    body: 'Send a photo!'
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        topic: t,
+                        title: "Lover's Nudge",
+                        message: 'Send a photo! 📸',
+                        tags: ['camera_with_flash', 'heart'],
+                        priority: 4
+                    })
                 });
                 if (!res.ok) throw new Error('HTTP ' + res.status);
                 showToast('Sent! 💕');

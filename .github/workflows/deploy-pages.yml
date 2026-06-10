@@ -1,4 +1,4 @@
-# Deploy frontend (public/) to GitHub Pages on every push to main
+# Deploy static site (repo root) to GitHub Pages on every push to main
 name: Deploy to GitHub Pages
 
 on:
@@ -31,7 +31,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: 'public'
+          path: '.'
 
       - name: Deploy to GitHub Pages
         id: deployment

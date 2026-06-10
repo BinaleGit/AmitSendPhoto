@@ -1,261 +1,876 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="auto">
 <head>
     <link rel="icon" href="icon.png" type="image/png">
     <link rel="apple-touch-icon" href="icon.png">
     <link rel="manifest" href="manifest.json">
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="theme-color" content="#ec4899">
-    <title>Lover's Nudge 📸</title>
+    <title>Lover's Nudge 💕</title>
     <style>
         :root {
             --pink: #ec4899;
             --pink-dark: #db2777;
+            --pink-soft: #fce7f3;
             --purple: #8b5cf6;
-            --bg: #fdf2f8;
+            --bg-1: #fdf2f8;
+            --bg-2: #fce7f3;
             --card: #ffffff;
             --text: #1f2937;
-            --muted: #6b7280;
+            --text-muted: #6b7280;
             --border: #f3e8ff;
+            --chip-bg: #f9fafb;
+            --bubble-sent: linear-gradient(135deg, #ec4899, #f472b6);
+            --bubble-sent-text: #ffffff;
+            --bubble-recv: #f3f4f6;
+            --bubble-recv-text: #1f2937;
+            --shadow: 0 10px 40px rgba(236, 72, 153, 0.15);
         }
+        html[data-theme="dark"], html[data-theme="auto"] {
+            color-scheme: light dark;
+        }
+        @media (prefers-color-scheme: dark) {
+            html[data-theme="auto"] {
+                --bg-1: #1a0f1a;
+                --bg-2: #2a1530;
+                --card: #1f1424;
+                --text: #f3f4f6;
+                --text-muted: #9ca3af;
+                --border: #2d1f33;
+                --chip-bg: #2a1530;
+                --bubble-recv: #2a1530;
+                --bubble-recv-text: #f3f4f6;
+                --shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+            }
+        }
+        html[data-theme="dark"] {
+            --bg-1: #1a0f1a;
+            --bg-2: #2a1530;
+            --card: #1f1424;
+            --text: #f3f4f6;
+            --text-muted: #9ca3af;
+            --border: #2d1f33;
+            --chip-bg: #2a1530;
+            --bubble-recv: #2a1530;
+            --bubble-recv-text: #f3f4f6;
+            --shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+        }
+
         * { box-sizing: border-box; }
         html, body { margin: 0; padding: 0; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background: linear-gradient(160deg, #fdf2f8 0%, #fce7f3 100%);
+            background: linear-gradient(160deg, var(--bg-1) 0%, var(--bg-2) 100%);
             color: var(--text);
             min-height: 100vh;
             display: flex;
-            align-items: center;
+            align-items: flex-start;
             justify-content: center;
-            padding: 20px;
+            padding: 16px;
+            padding-top: max(16px, env(safe-area-inset-top));
+            padding-bottom: max(16px, env(safe-area-inset-bottom));
+            transition: background 0.3s, color 0.3s;
         }
-        .card {
+        .app {
             background: var(--card);
             width: 100%;
-            max-width: 420px;
-            border-radius: 24px;
-            box-shadow: 0 10px 40px rgba(236, 72, 153, 0.15);
-            padding: 28px;
+            max-width: 460px;
+            border-radius: 28px;
+            box-shadow: var(--shadow);
+            padding: 24px;
+            position: relative;
+            overflow: hidden;
         }
-        h1 {
-            margin: 0 0 4px;
-            font-size: 26px;
-            text-align: center;
+        .screen { display: none; }
+        .screen.active { display: block; animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+        h1 { margin: 0; font-size: 24px; text-align: center; }
+        h2 {
+            font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em;
+            color: var(--text-muted); margin: 24px 0 10px;
         }
-        .subtitle {
-            text-align: center;
-            color: var(--muted);
-            margin: 0 0 24px;
-            font-size: 14px;
+        .subtitle { text-align: center; color: var(--text-muted); margin: 4px 0 20px; font-size: 14px; }
+
+        /* Header */
+        .header {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 8px;
         }
-        .section {
-            margin-top: 20px;
-            padding-top: 20px;
-            border-top: 1px solid var(--border);
+        .header .gear {
+            background: var(--chip-bg); border: none; color: var(--text);
+            width: 36px; height: 36px; border-radius: 50%; cursor: pointer;
+            font-size: 18px; display: flex; align-items: center; justify-content: center;
         }
-        .section h2 {
-            font-size: 14px;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            color: var(--muted);
-            margin: 0 0 12px;
+        .header .gear:active { transform: scale(0.92); }
+        .title-block { flex: 1; text-align: center; }
+        .title-block .with { font-size: 22px; font-weight: 600; }
+        .title-block .with .heart { display: inline-block; animation: beat 1.4s ease-in-out infinite; }
+        @keyframes beat {
+            0%, 100% { transform: scale(1); }
+            10%, 30% { transform: scale(1.25); }
+            20% { transform: scale(0.95); }
         }
-        label {
-            display: block;
-            font-size: 13px;
-            color: var(--muted);
-            margin-bottom: 6px;
+        .stats {
+            display: flex; gap: 8px; justify-content: center;
+            margin: 14px 0 22px; flex-wrap: wrap;
         }
-        input[type=text] {
-            width: 100%;
-            padding: 12px 14px;
-            font-size: 15px;
-            border: 1px solid #e5e7eb;
-            border-radius: 12px;
-            outline: none;
-            font-family: ui-monospace, "SF Mono", Menlo, monospace;
+        .chip {
+            background: var(--chip-bg); border-radius: 999px;
+            padding: 8px 14px; font-size: 13px; color: var(--text);
+            display: inline-flex; align-items: center; gap: 6px;
         }
-        input[type=text]:focus { border-color: var(--pink); }
-        .row { display: flex; gap: 8px; }
-        .row input { flex: 1; }
-        button {
-            padding: 12px 16px;
-            font-size: 15px;
-            border-radius: 12px;
-            border: none;
-            cursor: pointer;
-            font-weight: 500;
-            transition: transform 0.05s, opacity 0.2s;
+        .chip b { font-weight: 600; }
+
+        /* Vibe buttons grid */
+        .vibes {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+            margin-bottom: 18px;
         }
-        button:active { transform: scale(0.97); }
-        button.secondary {
-            background: #f3f4f6;
-            color: var(--text);
+        .vibe {
+            background: var(--chip-bg); border: 1.5px solid transparent;
+            border-radius: 16px; padding: 16px 12px; cursor: pointer;
+            display: flex; flex-direction: column; align-items: center; gap: 6px;
+            color: var(--text); transition: transform 0.05s, border-color 0.15s, background 0.15s;
+            font-family: inherit; font-size: 13px; font-weight: 500;
+            text-align: center; line-height: 1.2;
         }
-        button.primary {
-            background: var(--pink);
-            color: white;
-            width: 100%;
-            padding: 18px;
-            font-size: 18px;
-            font-weight: 600;
-            margin-top: 8px;
+        .vibe:hover { border-color: var(--pink); }
+        .vibe:active { transform: scale(0.96); }
+        .vibe .emoji { font-size: 28px; }
+        .vibe[data-primary="true"] {
+            background: linear-gradient(135deg, var(--pink), #f472b6);
+            color: white; border-color: transparent;
+            box-shadow: 0 6px 20px rgba(236, 72, 153, 0.35);
+            grid-column: 1 / -1;
+        }
+        .vibe[data-primary="true"] .emoji { font-size: 36px; }
+        .vibe[data-primary="true"] { font-size: 16px; padding: 18px; font-weight: 600; }
+        .vibe:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* Custom message row */
+        .custom-row { display: flex; gap: 8px; margin-bottom: 18px; }
+        .custom-row input {
+            flex: 1; padding: 12px 14px; font-size: 14px;
+            border: 1px solid var(--border); border-radius: 12px;
+            background: var(--card); color: var(--text); outline: none;
+            font-family: inherit;
+        }
+        .custom-row input:focus { border-color: var(--pink); }
+        .custom-row button {
+            padding: 0 16px; border-radius: 12px; border: none;
+            background: var(--purple); color: white; cursor: pointer;
+            font-size: 18px; font-family: inherit;
+        }
+
+        /* History timeline */
+        .history { margin-top: 8px; max-height: 320px; overflow-y: auto; padding: 4px; }
+        .history-empty {
+            text-align: center; color: var(--text-muted); padding: 24px 12px;
+            font-size: 14px; line-height: 1.6;
+        }
+        .bubble-row { display: flex; margin: 6px 0; }
+        .bubble-row.sent { justify-content: flex-end; }
+        .bubble-row.recv { justify-content: flex-start; }
+        .bubble {
+            max-width: 75%; padding: 10px 14px; border-radius: 18px;
+            font-size: 14px; line-height: 1.35; word-wrap: break-word;
+            animation: bubblePop 0.3s ease;
+        }
+        @keyframes bubblePop {
+            from { opacity: 0; transform: scale(0.85); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        .bubble.sent { background: var(--bubble-sent); color: var(--bubble-sent-text); border-bottom-right-radius: 6px; }
+        .bubble.recv { background: var(--bubble-recv); color: var(--bubble-recv-text); border-bottom-left-radius: 6px; }
+        .bubble .time { display: block; font-size: 10px; opacity: 0.7; margin-top: 4px; }
+
+        /* Setup wizard */
+        .wizard label {
+            display: block; font-size: 13px; color: var(--text-muted);
+            margin: 14px 0 6px;
+        }
+        .wizard input[type=text], .wizard input[type=date] {
+            width: 100%; padding: 12px 14px; font-size: 16px;
+            border: 1px solid var(--border); border-radius: 12px;
+            background: var(--card); color: var(--text); outline: none;
+            font-family: inherit;
+        }
+        .wizard input:focus { border-color: var(--pink); }
+        .wizard .btn-primary, .modal .btn-primary {
+            width: 100%; padding: 16px; border-radius: 14px; border: none;
+            background: var(--pink); color: white; cursor: pointer;
+            font-size: 16px; font-weight: 600; margin-top: 18px;
+            font-family: inherit;
             box-shadow: 0 6px 20px rgba(236, 72, 153, 0.35);
         }
-        button.primary:hover { background: var(--pink-dark); }
-        button.primary:disabled { opacity: 0.7; cursor: not-allowed; }
-        ol { padding-left: 20px; margin: 8px 0; line-height: 1.7; font-size: 14px; }
-        ol a { color: var(--purple); text-decoration: none; font-weight: 500; }
-        ol a:hover { text-decoration: underline; }
-        .spinner {
-            display: inline-block; width: 1em; height: 1em;
-            margin-right: 8px; vertical-align: -2px;
-            border: 2px solid rgba(255,255,255,0.3);
-            border-top-color: white; border-radius: 50%;
-            animation: spin 0.8s linear infinite;
+        .wizard .btn-primary:active, .modal .btn-primary:active { transform: scale(0.98); }
+        .wizard .btn-secondary, .modal .btn-secondary {
+            width: 100%; padding: 14px; border-radius: 14px;
+            border: 1px solid var(--border); background: var(--card);
+            color: var(--text); cursor: pointer; font-family: inherit;
+            font-size: 15px; margin-top: 10px;
         }
-        @keyframes spin { to { transform: rotate(360deg); } }
+        .topic-display {
+            background: var(--chip-bg); border-radius: 12px;
+            padding: 14px; margin: 12px 0; word-break: break-all;
+            font-family: ui-monospace, "SF Mono", Menlo, monospace;
+            font-size: 13px; text-align: center; color: var(--text);
+        }
+        .step-hint {
+            background: var(--pink-soft); border-radius: 12px;
+            padding: 12px 14px; font-size: 13px; line-height: 1.5;
+            color: #831843; margin-top: 12px;
+        }
+        html[data-theme="dark"] .step-hint,
+        html[data-theme="auto"] .step-hint {
+            background: rgba(236, 72, 153, 0.15); color: #fce7f3;
+        }
+        @media (prefers-color-scheme: light) {
+            html[data-theme="auto"] .step-hint { background: var(--pink-soft); color: #831843; }
+        }
+
+        /* Settings modal */
+        .modal-bg {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+            display: none; align-items: center; justify-content: center;
+            padding: 16px; z-index: 50; backdrop-filter: blur(4px);
+        }
+        .modal-bg.active { display: flex; animation: fadeIn 0.2s; }
+        .modal {
+            background: var(--card); width: 100%; max-width: 420px;
+            border-radius: 24px; padding: 24px; max-height: 90vh; overflow-y: auto;
+        }
+        .modal h3 { margin: 0 0 14px; font-size: 20px; color: var(--text); }
+        .modal label {
+            display: block; font-size: 13px; color: var(--text-muted);
+            margin: 12px 0 4px;
+        }
+        .modal input[type=text], .modal input[type=date], .modal select {
+            width: 100%; padding: 10px 12px; font-size: 14px;
+            border: 1px solid var(--border); border-radius: 10px;
+            background: var(--card); color: var(--text); outline: none;
+            font-family: inherit;
+        }
+        .modal .danger {
+            color: #ef4444; background: transparent; border: 1px solid #ef4444;
+            margin-top: 16px;
+        }
+
+        /* Toast */
         .toast {
             position: fixed; bottom: 24px; left: 50%;
-            transform: translateX(-50%) translateY(100px);
+            transform: translateX(-50%) translateY(120px);
             background: #1f2937; color: white;
-            padding: 12px 20px; border-radius: 999px;
+            padding: 12px 22px; border-radius: 999px;
             font-size: 14px; opacity: 0;
             transition: transform 0.3s, opacity 0.3s;
-            pointer-events: none; z-index: 100;
+            pointer-events: none; z-index: 200;
+            max-width: 90vw; text-align: center;
         }
         .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
-        details { margin-top: 16px; }
-        details summary {
-            cursor: pointer; font-size: 13px; color: var(--muted);
-            user-select: none; padding: 4px 0;
+
+        /* Floating hearts overlay */
+        .hearts {
+            position: fixed; inset: 0; pointer-events: none;
+            z-index: 100; overflow: hidden;
         }
-        details[open] summary { margin-bottom: 8px; }
+        .heart-pop {
+            position: absolute; font-size: 28px;
+            animation: floatUp 2s ease-out forwards;
+            user-select: none;
+        }
+        @keyframes floatUp {
+            0%   { transform: translate(0, 0) scale(0.5); opacity: 1; }
+            20%  { transform: translate(var(--dx), -40px) scale(1.2); opacity: 1; }
+            100% { transform: translate(calc(var(--dx) * 3), -400px) scale(0.6); opacity: 0; }
+        }
+
+        details summary {
+            cursor: pointer; font-size: 13px; color: var(--text-muted);
+            user-select: none; padding: 8px 0;
+        }
+        a { color: var(--purple); }
     </style>
 </head>
 <body>
 
-    <div class="card">
-        <h1>Lover's Nudge 📸</h1>
-        <p class="subtitle">Tap the button. She gets a push. Simple as that.</p>
+    <div class="app">
 
-        <button id="nudgeBtn" class="primary">📸 Send Nudge</button>
+        <!-- ─────── SETUP WIZARD (first time) ─────── -->
+        <div id="setupScreen" class="screen wizard">
+            <h1>Lover's Nudge 💕</h1>
+            <p class="subtitle">Let's set up your couple link</p>
 
-        <div class="section">
-            <h2>Your secret topic</h2>
-            <div class="row">
-                <input id="topicInput" type="text" autocomplete="off" spellcheck="false">
-                <button id="copyTopicBtn" class="secondary" title="Copy topic">Copy</button>
-            </div>
-            <details>
-                <summary>First-time setup (on her phone)</summary>
-                <ol>
-                    <li>Install <a href="https://ntfy.sh/app" target="_blank">ntfy</a>:
-                        <a href="https://apps.apple.com/us/app/ntfy/id1625396347" target="_blank">iOS</a> ·
-                        <a href="https://play.google.com/store/apps/details?id=io.heckel.ntfy" target="_blank">Android</a></li>
-                    <li>Open ntfy → tap <b>+</b> → <b>Subscribe to topic</b></li>
-                    <li>Paste the topic above and tap <b>Subscribe</b></li>
-                    <li>Done! Test with the Send Nudge button.</li>
-                </ol>
-                <button id="shareBtn" class="secondary" style="width:100%; margin-top:8px;">
-                    Copy setup link to send her
-                </button>
-            </details>
+            <label for="myNameInput">Your name</label>
+            <input id="myNameInput" type="text" placeholder="e.g. Roee" autocomplete="off">
+
+            <label for="theirNameInput">Their name</label>
+            <input id="theirNameInput" type="text" placeholder="e.g. Amit" autocomplete="off">
+
+            <label for="annivInput">Anniversary (optional)</label>
+            <input id="annivInput" type="date">
+
+            <button id="setupContinueBtn" class="btn-primary">Continue →</button>
         </div>
+
+        <!-- ─────── SETUP DONE - share link with partner ─────── -->
+        <div id="shareScreen" class="screen wizard">
+            <h1>Almost there 💌</h1>
+            <p class="subtitle">Send <b id="sharePartnerName"></b> this setup link</p>
+
+            <button id="shareLinkBtn" class="btn-primary">Send setup link</button>
+            <button id="copyShareBtn" class="btn-secondary">Copy link</button>
+
+            <div class="step-hint">
+                When <b id="sharePartnerName2"></b> opens the link on their phone,
+                their app auto-configures. Then they install <a href="https://ntfy.sh/app" target="_blank">ntfy</a> and subscribe.
+            </div>
+
+            <h2>Your ntfy topic</h2>
+            <p class="subtitle" style="margin:0 0 8px;">Install ntfy on YOUR phone too, then subscribe to:</p>
+            <div class="topic-display" id="myTopicShow"></div>
+            <button id="copyMyTopicBtn" class="btn-secondary">Copy my topic</button>
+
+            <details style="margin-top: 16px;">
+                <summary>How does this work?</summary>
+                <p style="font-size: 13px; line-height: 1.5; color: var(--text-muted);">
+                    You and your partner each get a private "mailbox" (topic). When you
+                    tap a vibe button, it drops a message in <b>their</b> mailbox →
+                    their <a href="https://ntfy.sh/app" target="_blank">ntfy app</a>
+                    delivers a push notification. They can tap reply buttons right from
+                    the notification — that drops a message in <b>your</b> mailbox.
+                    No accounts, no server, no cost.
+                </p>
+            </details>
+
+            <button id="setupDoneBtn" class="btn-primary">I'm done, open the app</button>
+        </div>
+
+        <!-- ─────── RECEIVED SETUP LINK (partner side) ─────── -->
+        <div id="receiveSetupScreen" class="screen wizard">
+            <h1>Welcome 💕</h1>
+            <p class="subtitle"><b id="receivedFrom"></b> wants to connect</p>
+
+            <div class="step-hint">
+                <b>Step 1:</b> Install the <a href="https://ntfy.sh/app" target="_blank">ntfy app</a>
+                — <a href="https://apps.apple.com/us/app/ntfy/id1625396347" target="_blank">iOS</a>
+                · <a href="https://play.google.com/store/apps/details?id=io.heckel.ntfy" target="_blank">Android</a>
+                <br><br>
+                <b>Step 2:</b> Open ntfy → tap <b>+</b> → <b>Subscribe to topic</b> → paste this:
+            </div>
+
+            <div class="topic-display" id="receivedTopicShow"></div>
+            <button id="copyReceivedTopicBtn" class="btn-secondary">Copy topic</button>
+
+            <button id="acceptSetupBtn" class="btn-primary">Done — open the app</button>
+        </div>
+
+        <!-- ─────── MAIN APP ─────── -->
+        <div id="mainScreen" class="screen">
+            <div class="header">
+                <div style="width: 36px;"></div>
+                <div class="title-block">
+                    <div class="with">Nudging <span id="partnerName"></span> <span class="heart">💕</span></div>
+                </div>
+                <button class="gear" id="settingsBtn" title="Settings">⚙</button>
+            </div>
+
+            <div class="stats" id="statsRow"></div>
+
+            <div class="vibes" id="vibesGrid"></div>
+
+            <div class="custom-row">
+                <input id="customMsgInput" type="text" placeholder="Or type something sweet…" maxlength="160">
+                <button id="customSendBtn" title="Send custom message">➤</button>
+            </div>
+
+            <h2>History</h2>
+            <div class="history" id="history"></div>
+        </div>
+
+        <!-- ─────── SETTINGS MODAL ─────── -->
+        <div class="modal-bg" id="settingsBg">
+            <div class="modal">
+                <h3>Settings</h3>
+
+                <label>Your name</label>
+                <input id="setMyName" type="text">
+                <label>Their name</label>
+                <input id="setTheirName" type="text">
+                <label>Anniversary</label>
+                <input id="setAnniv" type="date">
+
+                <label>Theme</label>
+                <select id="setTheme">
+                    <option value="auto">Auto (follow phone)</option>
+                    <option value="light">Light</option>
+                    <option value="dark">Dark</option>
+                </select>
+
+                <details style="margin-top: 14px;">
+                    <summary>Advanced</summary>
+                    <label>My topic (where I receive)</label>
+                    <input id="setMyTopic" type="text">
+                    <label>Their topic (where I send)</label>
+                    <input id="setTheirTopic" type="text">
+                    <button id="reshareBtn" class="btn-secondary">Re-share setup link with partner</button>
+                </details>
+
+                <button id="saveSettingsBtn" class="btn-primary">Save</button>
+                <button id="closeSettingsBtn" class="btn-secondary">Cancel</button>
+                <button id="resetAllBtn" class="btn-secondary danger">Reset everything</button>
+            </div>
+        </div>
+
     </div>
 
     <div id="toast" class="toast"></div>
+    <div id="hearts" class="hearts"></div>
 
     <script>
-        const NTFY_SERVER = 'https://ntfy.sh';
+    (function () {
+        'use strict';
 
-        const topicInput = document.getElementById('topicInput');
-        const nudgeBtn   = document.getElementById('nudgeBtn');
-        const copyBtn    = document.getElementById('copyTopicBtn');
-        const shareBtn   = document.getElementById('shareBtn');
-        const toast      = document.getElementById('toast');
+        const NTFY = 'https://ntfy.sh';
+        const LS_KEY = 'nudgeConfig_v2';
 
-        function showToast(msg) {
-            toast.textContent = msg;
-            toast.classList.add('show');
-            clearTimeout(showToast._t);
-            showToast._t = setTimeout(() => toast.classList.remove('show'), 2200);
+        // ───────────────────────── STATE ─────────────────────────
+        const defaultState = {
+            myName: '', theirName: '',
+            myTopic: '', theirTopic: '',
+            anniversary: '',
+            theme: 'auto',
+            history: [],          // {ts, dir:'sent'|'recv', text, emoji}
+            streak: { count: 0, last: null },
+            lastSentAt: 0
+        };
+        let state = load();
+
+        function load() {
+            try {
+                const raw = localStorage.getItem(LS_KEY);
+                if (!raw) return structuredClone(defaultState);
+                return Object.assign(structuredClone(defaultState), JSON.parse(raw));
+            } catch { return structuredClone(defaultState); }
         }
+        function save() { localStorage.setItem(LS_KEY, JSON.stringify(state)); }
 
-        function randomTopic() {
+        // ───────────────────────── HELPERS ─────────────────────────
+        function $(id) { return document.getElementById(id); }
+        function show(screenId) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            $(screenId).classList.add('active');
+        }
+        function toast(msg) {
+            const t = $('toast'); t.textContent = msg; t.classList.add('show');
+            clearTimeout(toast._t);
+            toast._t = setTimeout(() => t.classList.remove('show'), 2400);
+        }
+        function randomTopic(prefix) {
             const arr = new Uint8Array(12);
             crypto.getRandomValues(arr);
-            return 'nudge-' + Array.from(arr, b => b.toString(36)).join('').slice(0, 16);
+            return (prefix || 'nudge') + '-' + Array.from(arr, b => b.toString(36)).join('').slice(0, 16);
+        }
+        function fmtTime(ts) {
+            const d = new Date(ts);
+            const now = new Date();
+            const sameDay = d.toDateString() === now.toDateString();
+            return sameDay
+                ? d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                : d.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ' ' +
+                  d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }
+        function daysSince(iso) {
+            if (!iso) return 0;
+            return Math.floor((Date.now() - new Date(iso + 'T00:00:00').getTime()) / 86400000);
+        }
+        function todayStr() { return new Date().toISOString().slice(0, 10); }
+        function applyTheme() {
+            document.documentElement.setAttribute('data-theme', state.theme || 'auto');
         }
 
-        // Topic priority: URL ?topic= > localStorage > newly generated.
-        // A URL param means "her phone just opened the setup link" — save it.
-        const urlTopic = new URLSearchParams(location.search).get('topic');
-        if (urlTopic) {
-            localStorage.setItem('nudgeTopic', urlTopic);
-            history.replaceState({}, '', location.pathname);
+        // Setup-link encoding. Uses URL-safe base64.
+        function encodeSetup(payload) {
+            return btoa(unescape(encodeURIComponent(JSON.stringify(payload))))
+                .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
         }
-        let topic = localStorage.getItem('nudgeTopic');
-        if (!topic) {
-            topic = randomTopic();
-            localStorage.setItem('nudgeTopic', topic);
-        }
-        topicInput.value = topic;
-
-        topicInput.addEventListener('change', () => {
-            const val = topicInput.value.trim();
-            if (val) {
-                localStorage.setItem('nudgeTopic', val);
-                showToast('Topic saved');
-            }
-        });
-
-        copyBtn.addEventListener('click', async () => {
-            await navigator.clipboard.writeText(topicInput.value);
-            showToast('Topic copied');
-        });
-
-        shareBtn.addEventListener('click', async () => {
-            const link = `${location.origin}${location.pathname}?topic=${encodeURIComponent(topicInput.value)}`;
-            if (navigator.share) {
-                try { await navigator.share({ url: link, title: "Lover's Nudge setup" }); return; }
-                catch { /* fall through to clipboard */ }
-            }
-            await navigator.clipboard.writeText(link);
-            showToast('Setup link copied');
-        });
-
-        const NUDGE_LABEL = '📸 Send Nudge';
-        nudgeBtn.addEventListener('click', async () => {
-            const t = topicInput.value.trim();
-            if (!t) { showToast('Set a topic first'); return; }
-            nudgeBtn.disabled = true;
-            nudgeBtn.innerHTML = '<span class="spinner"></span> Sending...';
+        function decodeSetup(s) {
             try {
-                // Use ntfy's JSON publishing API so the title can contain emoji.
-                // (HTTP headers must be ISO-8859-1, but the JSON body is UTF-8.)
-                const res = await fetch(NTFY_SERVER, {
+                const b64 = s.replace(/-/g, '+').replace(/_/g, '/');
+                return JSON.parse(decodeURIComponent(escape(atob(b64))));
+            } catch { return null; }
+        }
+
+        // ───────────────────────── VIBES ─────────────────────────
+        // Up to 3 of these become tappable buttons in the notification she receives.
+        const QUICK_REPLIES = [
+            { emoji: '📸', label: 'Sending!',  text: 'On it! 📸' },
+            { emoji: '🥺', label: 'Busy soon', text: 'Busy now, soon 🥺' },
+            { emoji: '❤️', label: 'Love you',  text: 'Love you ❤️' }
+        ];
+
+        function timeGreeting() {
+            const h = new Date().getHours();
+            if (h < 5)  return { emoji: '🌙', label: 'Goodnight',     text: 'Goodnight my love 🌙' };
+            if (h < 12) return { emoji: '☀️', label: 'Good morning',  text: 'Good morning gorgeous ☀️' };
+            if (h < 17) return { emoji: '🌤️', label: 'Hey you',       text: 'Hey you, thinking of you 🌤️' };
+            if (h < 22) return { emoji: '🌆', label: 'Good evening',  text: 'Good evening beautiful 🌆' };
+            return            { emoji: '🌙', label: 'Goodnight',     text: 'Goodnight my love 🌙' };
+        }
+
+        function buildVibes() {
+            const greet = timeGreeting();
+            return [
+                { emoji: '📸', label: 'Send a photo', text: 'Send me a photo of what you\'re up to 📸', primary: true },
+                greet,
+                { emoji: '🥺', label: 'Miss you',     text: 'Missing your face right now 🥺' },
+                { emoji: '😘', label: 'Kiss',         text: '*kiss kiss* 😘' },
+                { emoji: '❤️', label: 'Love you',     text: 'Just popping in to say I love you ❤️' },
+                { emoji: '🍽️', label: 'Hungry?',      text: 'What should we eat tonight? 🍽️' }
+            ];
+        }
+
+        // ───────────────────────── RENDER ─────────────────────────
+        function renderMain() {
+            $('partnerName').textContent = state.theirName || '…';
+
+            // Stats chips
+            const chips = [];
+            if (state.anniversary) {
+                const d = daysSince(state.anniversary);
+                chips.push(`<div class="chip">💕 <b>${d}</b> days together</div>`);
+            }
+            chips.push(`<div class="chip">🔥 <b>${state.streak.count}</b> day streak</div>`);
+            $('statsRow').innerHTML = chips.join('');
+
+            // Vibe buttons
+            const grid = $('vibesGrid');
+            grid.innerHTML = '';
+            buildVibes().forEach(v => {
+                const btn = document.createElement('button');
+                btn.className = 'vibe';
+                if (v.primary) btn.dataset.primary = 'true';
+                btn.innerHTML = `<span class="emoji">${v.emoji}</span><span>${v.label}</span>`;
+                btn.addEventListener('click', () => sendNudge(v.emoji, v.text));
+                grid.appendChild(btn);
+            });
+
+            renderHistory();
+        }
+
+        function renderHistory() {
+            const h = $('history');
+            if (!state.history.length) {
+                h.innerHTML = `<div class="history-empty">
+                    No messages yet 💌<br>Tap a vibe above to send your first nudge
+                </div>`;
+                return;
+            }
+            // Newest first, but render bottom-up so newest is at bottom (chat style).
+            const items = [...state.history].slice(-50);
+            h.innerHTML = items.map(m => `
+                <div class="bubble-row ${m.dir}">
+                    <div class="bubble ${m.dir}">
+                        ${m.emoji ? m.emoji + ' ' : ''}${escapeHtml(m.text)}
+                        <span class="time">${fmtTime(m.ts)}</span>
+                    </div>
+                </div>
+            `).join('');
+            h.scrollTop = h.scrollHeight;
+        }
+        function escapeHtml(s) {
+            return String(s).replace(/[&<>"']/g, c => ({
+                '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+            }[c]));
+        }
+
+        // ───────────────────────── SEND ─────────────────────────
+        async function sendNudge(emoji, text) {
+            if (!state.theirTopic) { toast('Set up a partner first'); return; }
+
+            // Anti-spam: 5 second cooldown
+            const since = Date.now() - state.lastSentAt;
+            if (since < 5000) {
+                const wait = Math.ceil((5000 - since) / 1000);
+                toast(`Easy tiger — wait ${wait}s 🐯`);
+                return;
+            }
+            state.lastSentAt = Date.now();
+
+            // Streak: increment if new day
+            const today = todayStr();
+            if (state.streak.last !== today) {
+                const y = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+                state.streak.count = state.streak.last === y ? state.streak.count + 1 : 1;
+                state.streak.last = today;
+            }
+
+            // Build ntfy payload with reply action buttons.
+            // ntfy supports up to 3 actions.
+            const actions = QUICK_REPLIES.map(r => ({
+                action: 'http',
+                label: `${r.emoji} ${r.label}`,
+                url: NTFY + '/',
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    topic: state.myTopic,
+                    title: `${state.theirName} replied`,
+                    message: r.text,
+                    tags: ['heart']
+                }),
+                clear: true
+            }));
+
+            try {
+                const res = await fetch(NTFY + '/', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        topic: t,
-                        title: "Lover's Nudge",
-                        message: 'Send a photo! 📸',
-                        tags: ['camera_with_flash', 'heart'],
-                        priority: 4
+                        topic: state.theirTopic,
+                        title: `${state.myName || 'Nudge'}: ${emoji}`,
+                        message: text,
+                        tags: ['heart'],
+                        priority: 4,
+                        actions: state.myTopic ? actions : undefined
                     })
                 });
                 if (!res.ok) throw new Error('HTTP ' + res.status);
-                showToast('Sent! 💕');
+
+                state.history.push({ ts: Date.now(), dir: 'sent', emoji, text });
+                if (state.history.length > 200) state.history = state.history.slice(-200);
+                save();
+                renderMain();
+
+                burstHearts();
+                if (navigator.vibrate) navigator.vibrate(60);
+                toast('Sent! 💕');
             } catch (err) {
-                showToast('Failed: ' + err.message);
-            } finally {
-                nudgeBtn.disabled = false;
-                nudgeBtn.textContent = NUDGE_LABEL;
+                toast('Failed: ' + err.message);
             }
+        }
+
+        // ───────────────────────── RECEIVE (live stream) ─────────────────────────
+        let es = null;
+        function startStream() {
+            if (es) { try { es.close(); } catch {} es = null; }
+            if (!state.myTopic) return;
+            try {
+                es = new EventSource(`${NTFY}/${encodeURIComponent(state.myTopic)}/sse`);
+                es.onmessage = (e) => {
+                    let msg; try { msg = JSON.parse(e.data); } catch { return; }
+                    if (msg.event !== 'message') return;
+                    const text = msg.message || msg.title || '';
+                    // Skip messages we sent ourselves — they were our nudges echoing back? They wouldn't,
+                    // because we send to theirTopic not myTopic. So anything here is incoming.
+                    state.history.push({ ts: (msg.time || Math.floor(Date.now()/1000)) * 1000, dir: 'recv', text, emoji: '' });
+                    if (state.history.length > 200) state.history = state.history.slice(-200);
+                    save();
+                    renderHistory();
+                    if (navigator.vibrate) navigator.vibrate([60, 40, 60]);
+                    burstHearts(6);
+                    toast(`${state.theirName} sent: ${text}`);
+                };
+                es.onerror = () => { /* auto-reconnects */ };
+            } catch (err) { console.warn('SSE failed', err); }
+        }
+
+        // Catch up on messages we missed while the app was closed.
+        async function pollMissed() {
+            if (!state.myTopic) return;
+            const lastRecv = [...state.history].reverse().find(m => m.dir === 'recv');
+            const since = lastRecv ? Math.floor(lastRecv.ts / 1000) + 1 : Math.floor((Date.now() - 7*86400000)/1000);
+            try {
+                const res = await fetch(`${NTFY}/${encodeURIComponent(state.myTopic)}/json?poll=1&since=${since}`);
+                if (!res.ok) return;
+                const text = await res.text();
+                const lines = text.trim().split('\n').filter(Boolean);
+                let added = 0;
+                lines.forEach(line => {
+                    let m; try { m = JSON.parse(line); } catch { return; }
+                    if (m.event !== 'message') return;
+                    state.history.push({ ts: (m.time || 0) * 1000, dir: 'recv', text: m.message || m.title || '', emoji: '' });
+                    added++;
+                });
+                if (added) { save(); renderHistory(); }
+            } catch {}
+        }
+
+        // ───────────────────────── HEARTS ANIMATION ─────────────────────────
+        function burstHearts(count = 10) {
+            const container = $('hearts');
+            const emojis = ['💕', '❤️', '💖', '💗', '💞', '💓'];
+            for (let i = 0; i < count; i++) {
+                const el = document.createElement('span');
+                el.className = 'heart-pop';
+                el.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+                el.style.left = (40 + Math.random() * 20) + 'vw';
+                el.style.top  = (60 + Math.random() * 20) + 'vh';
+                el.style.setProperty('--dx', (Math.random() * 60 - 30) + 'px');
+                el.style.animationDelay = (i * 60) + 'ms';
+                container.appendChild(el);
+                setTimeout(() => el.remove(), 2400 + i * 60);
+            }
+        }
+
+        // ───────────────────────── SETUP FLOW ─────────────────────────
+        function startApp() {
+            applyTheme();
+            // Check for incoming setup link first.
+            const params = new URLSearchParams(location.search);
+            const setupBlob = params.get('s');
+            if (setupBlob) {
+                const data = decodeSetup(setupBlob);
+                if (data && data.myName && data.myTopic && data.theirTopic) {
+                    // The link was generated by the OTHER person. Their "their" is our "my".
+                    state.myName     = data.theirName || '';
+                    state.theirName  = data.myName    || '';
+                    state.myTopic    = data.theirTopic;
+                    state.theirTopic = data.myTopic;
+                    state.anniversary = data.anniversary || state.anniversary;
+                    save();
+                    $('receivedFrom').textContent = state.theirName || 'Someone';
+                    $('receivedTopicShow').textContent = state.myTopic;
+                    history.replaceState({}, '', location.pathname);
+                    show('receiveSetupScreen');
+                    return;
+                }
+            }
+            if (state.myTopic && state.theirTopic && state.theirName) {
+                show('mainScreen');
+                renderMain();
+                startStream();
+                pollMissed();
+            } else {
+                show('setupScreen');
+            }
+        }
+
+        // Setup screen
+        $('setupContinueBtn').addEventListener('click', () => {
+            const my = $('myNameInput').value.trim();
+            const their = $('theirNameInput').value.trim();
+            if (!my || !their) { toast('Both names please'); return; }
+            state.myName = my;
+            state.theirName = their;
+            state.anniversary = $('annivInput').value || '';
+            if (!state.myTopic)    state.myTopic    = randomTopic('me');
+            if (!state.theirTopic) state.theirTopic = randomTopic('u');
+            save();
+            $('sharePartnerName').textContent = their;
+            $('sharePartnerName2').textContent = their;
+            $('myTopicShow').textContent = state.myTopic;
+            show('shareScreen');
         });
+
+        function buildShareLink() {
+            const payload = {
+                myName: state.myName,
+                theirName: state.theirName,
+                myTopic: state.myTopic,
+                theirTopic: state.theirTopic,
+                anniversary: state.anniversary
+            };
+            return `${location.origin}${location.pathname}?s=${encodeSetup(payload)}`;
+        }
+
+        $('shareLinkBtn').addEventListener('click', async () => {
+            const link = buildShareLink();
+            const msg = `Hey ${state.theirName} 💕  Open this on your phone to set up our Lover's Nudge: ${link}`;
+            if (navigator.share) {
+                try { await navigator.share({ title: "Lover's Nudge", text: msg }); return; }
+                catch {}
+            }
+            await navigator.clipboard.writeText(msg);
+            toast('Setup message copied');
+        });
+        $('copyShareBtn').addEventListener('click', async () => {
+            await navigator.clipboard.writeText(buildShareLink());
+            toast('Link copied');
+        });
+        $('copyMyTopicBtn').addEventListener('click', async () => {
+            await navigator.clipboard.writeText(state.myTopic);
+            toast('Topic copied');
+        });
+        $('setupDoneBtn').addEventListener('click', () => {
+            show('mainScreen'); renderMain(); startStream(); pollMissed();
+        });
+
+        $('copyReceivedTopicBtn').addEventListener('click', async () => {
+            await navigator.clipboard.writeText(state.myTopic);
+            toast('Topic copied');
+        });
+        $('acceptSetupBtn').addEventListener('click', () => {
+            show('mainScreen'); renderMain(); startStream(); pollMissed();
+        });
+
+        // Custom message
+        $('customSendBtn').addEventListener('click', () => {
+            const v = $('customMsgInput').value.trim();
+            if (!v) return;
+            $('customMsgInput').value = '';
+            sendNudge('💬', v);
+        });
+        $('customMsgInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') $('customSendBtn').click();
+        });
+
+        // ───────────────────────── SETTINGS ─────────────────────────
+        $('settingsBtn').addEventListener('click', () => {
+            $('setMyName').value     = state.myName;
+            $('setTheirName').value  = state.theirName;
+            $('setAnniv').value      = state.anniversary || '';
+            $('setTheme').value      = state.theme || 'auto';
+            $('setMyTopic').value    = state.myTopic;
+            $('setTheirTopic').value = state.theirTopic;
+            $('settingsBg').classList.add('active');
+        });
+        $('closeSettingsBtn').addEventListener('click', () => $('settingsBg').classList.remove('active'));
+        $('settingsBg').addEventListener('click', (e) => {
+            if (e.target.id === 'settingsBg') $('settingsBg').classList.remove('active');
+        });
+        $('saveSettingsBtn').addEventListener('click', () => {
+            state.myName      = $('setMyName').value.trim()    || state.myName;
+            state.theirName   = $('setTheirName').value.trim() || state.theirName;
+            state.anniversary = $('setAnniv').value || '';
+            state.theme       = $('setTheme').value;
+            const newMine = $('setMyTopic').value.trim();
+            const newTheirs = $('setTheirTopic').value.trim();
+            const topicChanged = newMine !== state.myTopic;
+            state.myTopic     = newMine    || state.myTopic;
+            state.theirTopic  = newTheirs  || state.theirTopic;
+            save();
+            applyTheme();
+            $('settingsBg').classList.remove('active');
+            renderMain();
+            if (topicChanged) startStream();
+            toast('Saved');
+        });
+        $('reshareBtn').addEventListener('click', async () => {
+            const link = buildShareLink();
+            await navigator.clipboard.writeText(link);
+            toast('Setup link copied');
+        });
+        $('resetAllBtn').addEventListener('click', () => {
+            if (!confirm('Wipe everything and start over?')) return;
+            localStorage.removeItem(LS_KEY);
+            location.reload();
+        });
+
+        // Refresh streak/greeting if app is left open across midnight or hours.
+        setInterval(() => {
+            if ($('mainScreen').classList.contains('active')) renderMain();
+        }, 5 * 60 * 1000);
+
+        // Re-poll when tab regains focus.
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden && state.myTopic) { pollMissed(); startStream(); }
+        });
+
+        startApp();
+    })();
     </script>
 </body>
 </html>

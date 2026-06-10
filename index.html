@@ -333,6 +333,12 @@
             <div class="topic-display" id="myTopicShow"></div>
             <button id="copyMyTopicBtn" class="btn-secondary">Copy my topic</button>
 
+            <h2>Sync to your other devices</h2>
+            <p class="subtitle" style="margin:0 0 8px;">
+                Opening the link above on your laptop / tablet syncs the same setup
+                (you'll be asked "which one are you?" — pick yourself).
+            </p>
+
             <details style="margin-top: 16px;">
                 <summary>How does this work?</summary>
                 <p style="font-size: 13px; line-height: 1.5; color: var(--text-muted);">
@@ -365,6 +371,15 @@
             <button id="copyReceivedTopicBtn" class="btn-secondary">Copy topic</button>
 
             <button id="acceptSetupBtn" class="btn-primary">Done — open the app</button>
+        </div>
+
+        <!-- ─────── CHOOSE ROLE (which one are you?) ─────── -->
+        <div id="chooseRoleScreen" class="screen wizard">
+            <h1>Which one are you? 💕</h1>
+            <p class="subtitle">Pick your name so we know which side of the chat is yours</p>
+            <button id="roleBtnA" class="btn-primary">I'm <span id="roleNameA"></span></button>
+            <button id="roleBtnB" class="btn-primary" style="margin-top: 10px;">I'm <span id="roleNameB"></span></button>
+            <button id="roleCancelBtn" class="btn-secondary">Cancel</button>
         </div>
 
         <!-- ─────── MAIN APP ─────── -->
@@ -442,7 +457,8 @@
             myTopic: '', theirTopic: '',
             anniversary: '',
             theme: 'auto',
-            history: [],          // {ts, dir:'sent'|'recv', text, emoji}
+            history: [],          // {id, ts, dir:'sent'|'recv', text, emoji}
+            seenIds: {},          // ntfy message ids we've already added (dedup)
             streak: { count: 0, last: null },
             lastSentAt: 0
         };
@@ -489,6 +505,24 @@
         function todayStr() { return new Date().toISOString().slice(0, 10); }
         function applyTheme() {
             document.documentElement.setAttribute('data-theme', state.theme || 'auto');
+        }
+        // Derived from shared history so it counts across all devices.
+        function computeStreak() {
+            const days = new Set();
+            state.history.forEach(m => {
+                if (m.dir === 'sent') days.add(new Date(m.ts).toISOString().slice(0, 10));
+            });
+            let d = new Date();
+            if (!days.has(d.toISOString().slice(0, 10))) {
+                d.setDate(d.getDate() - 1);
+                if (!days.has(d.toISOString().slice(0, 10))) return 0;
+            }
+            let count = 0;
+            while (days.has(d.toISOString().slice(0, 10))) {
+                count++;
+                d.setDate(d.getDate() - 1);
+            }
+            return count;
         }
 
         // Setup-link encoding. Uses URL-safe base64.
@@ -542,7 +576,7 @@
                 const d = daysSince(state.anniversary);
                 chips.push(`<div class="chip">💕 <b>${d}</b> days together</div>`);
             }
-            chips.push(`<div class="chip">🔥 <b>${state.streak.count}</b> day streak</div>`);
+            chips.push(`<div class="chip">🔥 <b>${computeStreak()}</b> day streak</div>`);
             $('statsRow').innerHTML = chips.join('');
 
             // Vibe buttons
@@ -599,16 +633,9 @@
             }
             state.lastSentAt = Date.now();
 
-            // Streak: increment if new day
-            const today = todayStr();
-            if (state.streak.last !== today) {
-                const y = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
-                state.streak.count = state.streak.last === y ? state.streak.count + 1 : 1;
-                state.streak.last = today;
-            }
-
-            // Build ntfy payload with reply action buttons.
-            // ntfy supports up to 3 actions.
+            // Lock-screen reply buttons on the partner's notification.
+            // Each button POSTs back to MY topic, tagged with THEIR name (so all my
+            // devices recognize the reply as coming from them).
             const actions = QUICK_REPLIES.map(r => ({
                 action: 'http',
                 label: `${r.emoji} ${r.label}`,
@@ -617,7 +644,7 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     topic: state.myTopic,
-                    title: `${state.theirName} replied`,
+                    title: state.theirName,
                     message: r.text,
                     tags: ['heart']
                 }),
@@ -630,8 +657,8 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         topic: state.theirTopic,
-                        title: `${state.myName || 'Nudge'}: ${emoji}`,
-                        message: text,
+                        title: state.myName || 'Nudge',
+                        message: `${emoji} ${text}`,
                         tags: ['heart'],
                         priority: 4,
                         actions: state.myTopic ? actions : undefined
@@ -639,8 +666,17 @@
                 });
                 if (!res.ok) throw new Error('HTTP ' + res.status);
 
-                state.history.push({ ts: Date.now(), dir: 'sent', emoji, text });
-                if (state.history.length > 200) state.history = state.history.slice(-200);
+                // Capture ntfy's id so the SSE echo doesn't double-add this message.
+                let id = null;
+                try { id = (await res.json()).id; } catch {}
+                if (id) state.seenIds[id] = Date.now();
+
+                // Add locally for instant feedback.
+                state.history.push({
+                    id, ts: Date.now(), dir: 'sent',
+                    emoji: '', text: `${emoji} ${text}`
+                });
+                trimHistory();
                 save();
                 renderMain();
 
@@ -652,49 +688,104 @@
             }
         }
 
-        // ───────────────────────── RECEIVE (live stream) ─────────────────────────
-        let es = null;
-        function startStream() {
-            if (es) { try { es.close(); } catch {} es = null; }
-            if (!state.myTopic) return;
-            try {
-                es = new EventSource(`${NTFY}/${encodeURIComponent(state.myTopic)}/sse`);
-                es.onmessage = (e) => {
-                    let msg; try { msg = JSON.parse(e.data); } catch { return; }
-                    if (msg.event !== 'message') return;
-                    const text = msg.message || msg.title || '';
-                    // Skip messages we sent ourselves — they were our nudges echoing back? They wouldn't,
-                    // because we send to theirTopic not myTopic. So anything here is incoming.
-                    state.history.push({ ts: (msg.time || Math.floor(Date.now()/1000)) * 1000, dir: 'recv', text, emoji: '' });
-                    if (state.history.length > 200) state.history = state.history.slice(-200);
-                    save();
-                    renderHistory();
-                    if (navigator.vibrate) navigator.vibrate([60, 40, 60]);
-                    burstHearts(6);
-                    toast(`${state.theirName} sent: ${text}`);
-                };
-                es.onerror = () => { /* auto-reconnects */ };
-            } catch (err) { console.warn('SSE failed', err); }
+        function trimHistory() {
+            if (state.history.length > 300) {
+                state.history = state.history.slice(-300);
+            }
+            // Prune very old seenIds (>14 days) to keep storage small.
+            const cutoff = Date.now() - 14 * 86400000;
+            for (const k in state.seenIds) {
+                if (state.seenIds[k] < cutoff) delete state.seenIds[k];
+            }
         }
 
-        // Catch up on messages we missed while the app was closed.
+        // ───────────────────────── INCOMING MESSAGE HANDLER ─────────────────────────
+        // Both topics are subscribed to, so we see the full conversation on every device.
+        // Direction is determined by the message title (sender's name).
+        function handleIncomingMessage(msg, source) {
+            if (!msg || msg.event !== 'message') return false;
+            if (msg.id && state.seenIds[msg.id]) return false; // already seen
+            if (msg.id) state.seenIds[msg.id] = Date.now();
+
+            const ts = (msg.time || Math.floor(Date.now() / 1000)) * 1000;
+            const title = (msg.title || '').trim();
+            const body  = msg.message || '';
+
+            // Figure out direction:
+            //   1. If title matches myName → I sent it (from this or another of my devices)
+            //   2. If title matches theirName → they sent it (or a lock-screen reply tagged with their name)
+            //   3. Fallback: topic-based inference
+            let dir;
+            if (title && state.myName && title.toLowerCase() === state.myName.toLowerCase()) {
+                dir = 'sent';
+            } else if (title && state.theirName && title.toLowerCase() === state.theirName.toLowerCase()) {
+                dir = 'recv';
+            } else if (source === 'mine') {
+                dir = 'recv';   // arrived on my receive topic → from partner
+            } else {
+                dir = 'sent';   // arrived on partner's receive topic → from me
+            }
+
+            state.history.push({ id: msg.id || null, ts, dir, emoji: '', text: body });
+            // Keep history sorted by time (handles out-of-order arrivals from polling).
+            state.history.sort((a, b) => a.ts - b.ts);
+            trimHistory();
+            save();
+            renderHistory();
+
+            // Buzz / notify only for new INCOMING messages, not echoes of our own sends.
+            if (dir === 'recv') {
+                if (navigator.vibrate) navigator.vibrate([60, 40, 60]);
+                burstHearts(6);
+                toast(`${state.theirName}: ${body.slice(0, 50)}`);
+            }
+            return true;
+        }
+
+        // ───────────────────────── LIVE STREAMS ─────────────────────────
+        // Subscribe to BOTH topics so the chat is shared across both partners.
+        let streams = [];
+        function startStream() {
+            stopStreams();
+            if (!state.myTopic || !state.theirTopic) return;
+            streams.push(openStream(state.myTopic, 'mine'));
+            streams.push(openStream(state.theirTopic, 'theirs'));
+        }
+        function stopStreams() {
+            streams.forEach(s => { try { s.close(); } catch {} });
+            streams = [];
+        }
+        function openStream(topic, source) {
+            const es = new EventSource(`${NTFY}/${encodeURIComponent(topic)}/sse`);
+            es.onmessage = (e) => {
+                let msg; try { msg = JSON.parse(e.data); } catch { return; }
+                handleIncomingMessage(msg, source);
+            };
+            es.onerror = () => { /* EventSource auto-reconnects */ };
+            return es;
+        }
+
+        // Catch up on missed messages from BOTH topics.
         async function pollMissed() {
-            if (!state.myTopic) return;
-            const lastRecv = [...state.history].reverse().find(m => m.dir === 'recv');
-            const since = lastRecv ? Math.floor(lastRecv.ts / 1000) + 1 : Math.floor((Date.now() - 7*86400000)/1000);
+            if (!state.myTopic || !state.theirTopic) return;
+            const lastMsg = state.history[state.history.length - 1];
+            const since = lastMsg
+                ? Math.floor(lastMsg.ts / 1000) + 1
+                : Math.floor((Date.now() - 7 * 86400000) / 1000);
+            await Promise.all([
+                pollTopic(state.myTopic,    since, 'mine'),
+                pollTopic(state.theirTopic, since, 'theirs')
+            ]);
+        }
+        async function pollTopic(topic, since, source) {
             try {
-                const res = await fetch(`${NTFY}/${encodeURIComponent(state.myTopic)}/json?poll=1&since=${since}`);
+                const res = await fetch(`${NTFY}/${encodeURIComponent(topic)}/json?poll=1&since=${since}`);
                 if (!res.ok) return;
                 const text = await res.text();
-                const lines = text.trim().split('\n').filter(Boolean);
-                let added = 0;
-                lines.forEach(line => {
+                text.trim().split('\n').filter(Boolean).forEach(line => {
                     let m; try { m = JSON.parse(line); } catch { return; }
-                    if (m.event !== 'message') return;
-                    state.history.push({ ts: (m.time || 0) * 1000, dir: 'recv', text: m.message || m.title || '', emoji: '' });
-                    added++;
+                    handleIncomingMessage(m, source);
                 });
-                if (added) { save(); renderHistory(); }
             } catch {}
         }
 
@@ -716,28 +807,56 @@
         }
 
         // ───────────────────────── SETUP FLOW ─────────────────────────
+        // Pending invite (decoded setup link) waiting for role choice.
+        let pendingInvite = null;
+
+        function applyRole(invite, mySide) {
+            const me = invite[mySide];
+            const them = invite[mySide === 'a' ? 'b' : 'a'];
+            state.myName     = me.name;
+            state.theirName  = them.name;
+            state.myTopic    = me.topic;
+            state.theirTopic = them.topic;
+            state.anniversary = invite.anniversary || state.anniversary;
+            save();
+        }
+
         function startApp() {
             applyTheme();
-            // Check for incoming setup link first.
             const params = new URLSearchParams(location.search);
             const setupBlob = params.get('s');
+
             if (setupBlob) {
                 const data = decodeSetup(setupBlob);
-                if (data && data.myName && data.myTopic && data.theirTopic) {
-                    // The link was generated by the OTHER person. Their "their" is our "my".
+                history.replaceState({}, '', location.pathname);
+
+                // New symmetric format (v2): contains both sides.
+                if (data && data.a && data.b && data.a.topic && data.b.topic) {
+                    // If this device already matches one of the two sides, silent sync.
+                    if (state.myTopic === data.a.topic && state.theirTopic === data.b.topic) {
+                        toast('Already in sync ✓');
+                    } else if (state.myTopic === data.b.topic && state.theirTopic === data.a.topic) {
+                        toast('Already in sync ✓');
+                    } else {
+                        // Need to know which person this device is.
+                        pendingInvite = data;
+                        $('roleNameA').textContent = data.a.name || 'A';
+                        $('roleNameB').textContent = data.b.name || 'B';
+                        show('chooseRoleScreen');
+                        return;
+                    }
+                }
+                // Legacy v1 asymmetric format: link was from the OTHER person.
+                else if (data && data.myName && data.myTopic && data.theirTopic) {
                     state.myName     = data.theirName || '';
                     state.theirName  = data.myName    || '';
                     state.myTopic    = data.theirTopic;
                     state.theirTopic = data.myTopic;
                     state.anniversary = data.anniversary || state.anniversary;
                     save();
-                    $('receivedFrom').textContent = state.theirName || 'Someone';
-                    $('receivedTopicShow').textContent = state.myTopic;
-                    history.replaceState({}, '', location.pathname);
-                    show('receiveSetupScreen');
-                    return;
                 }
             }
+
             if (state.myTopic && state.theirTopic && state.theirName) {
                 show('mainScreen');
                 renderMain();
@@ -765,12 +884,13 @@
             show('shareScreen');
         });
 
+        // Symmetric setup link: contains BOTH sides without "mine vs theirs" perspective.
+        // Opening it on any device will recognize known config (silent) or ask "which one are you?".
         function buildShareLink() {
             const payload = {
-                myName: state.myName,
-                theirName: state.theirName,
-                myTopic: state.myTopic,
-                theirTopic: state.theirTopic,
+                v: 2,
+                a: { name: state.myName,    topic: state.myTopic },
+                b: { name: state.theirName, topic: state.theirTopic },
                 anniversary: state.anniversary
             };
             return `${location.origin}${location.pathname}?s=${encodeSetup(payload)}`;
@@ -778,7 +898,7 @@
 
         $('shareLinkBtn').addEventListener('click', async () => {
             const link = buildShareLink();
-            const msg = `Hey ${state.theirName} 💕  Open this on your phone to set up our Lover's Nudge: ${link}`;
+            const msg = `Hey ${state.theirName} 💕  Open this on your phone to set up our Lover's Nudge — tap "I'm ${state.theirName}" when it asks: ${link}`;
             if (navigator.share) {
                 try { await navigator.share({ title: "Lover's Nudge", text: msg }); return; }
                 catch {}
@@ -804,6 +924,26 @@
         });
         $('acceptSetupBtn').addEventListener('click', () => {
             show('mainScreen'); renderMain(); startStream(); pollMissed();
+        });
+
+        // Choose-role screen handlers
+        function finalizeRole(side) {
+            if (!pendingInvite) return;
+            applyRole(pendingInvite, side);
+            pendingInvite = null;
+            $('receivedFrom').textContent = state.theirName || 'Someone';
+            $('receivedTopicShow').textContent = state.myTopic;
+            show('receiveSetupScreen');
+        }
+        $('roleBtnA').addEventListener('click', () => finalizeRole('a'));
+        $('roleBtnB').addEventListener('click', () => finalizeRole('b'));
+        $('roleCancelBtn').addEventListener('click', () => {
+            pendingInvite = null;
+            if (state.myTopic && state.theirTopic) {
+                show('mainScreen'); renderMain(); startStream(); pollMissed();
+            } else {
+                show('setupScreen');
+            }
         });
 
         // Custom message
